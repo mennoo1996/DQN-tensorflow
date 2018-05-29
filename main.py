@@ -1,6 +1,9 @@
 from __future__ import print_function
 import random
 import tensorflow as tf
+import retro
+import numpy as np
+import gym
 
 from dqn.agent import Agent
 from dqn.environment import GymEnvironment, SimpleGymEnvironment
@@ -41,6 +44,23 @@ def calc_gpu_fraction(fraction_string):
   print(" [*] GPU : %.4f" % fraction)
   return fraction
 
+class SonicDiscretizer(gym.ActionWrapper):
+    def __init__(self, env):
+        super(SonicDiscretizer, self).__init__(env)
+        buttons = ["B", "A", "MODE", "START", "UP", "DOWN", "LEFT", "RIGHT", "C", "Y", "X", "Z"]
+        actions = [['LEFT'], ['RIGHT'], ['LEFT', 'DOWN'], ['RIGHT', 'DOWN'], ['DOWN'], ['DOWN', 'B'], ['B']]
+        self._actions = []
+        for action in actions:
+            arr = np.array([False] * 12)
+            for button in action:
+                arr[buttons.index(button)] = True
+            self._actions.append(arr)
+        self.action_space = gym.spaces.Discrete(len(self._actions))
+        self.action_size = len(actions)
+
+    def action(self, a):
+        return self._actions[a].copy()
+
 def main(_):
   gpu_options = tf.GPUOptions(
       per_process_gpu_memory_fraction=calc_gpu_fraction(FLAGS.gpu_fraction))
@@ -48,10 +68,14 @@ def main(_):
   with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
     config = get_config(FLAGS) or FLAGS
 
-    if config.env_type == 'simple':
-      env = SimpleGymEnvironment(config)
-    else:
-      env = GymEnvironment(config)
+    #if config.env_type == 'simple':
+    #  env = SimpleGymEnvironment(config)
+    #else:
+    #  env = GymEnvironment(config)
+
+
+    env = retro.make(game='SonicAndKnuckles3-Genesis', state='MushroomHillZone.Act1')
+    env = SonicDiscretizer(env)
 
     if not tf.test.is_gpu_available() and FLAGS.use_gpu:
       raise Exception("use_gpu flag is true when no GPUs are available")

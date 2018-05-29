@@ -31,6 +31,7 @@ class Agent(BaseModel):
     self.build_dqn()
 
   def train(self):
+    actionss = [['LEFT'], ['RIGHT'], ['LEFT', 'DOWN'], ['RIGHT', 'DOWN'], ['DOWN'], ['DOWN', 'B'], ['B']]
     start_step = self.step_op.eval()
     start_time = time.time()
 
@@ -38,8 +39,11 @@ class Agent(BaseModel):
     total_reward, self.total_loss, self.total_q = 0., 0., 0.
     max_avg_ep_reward = 0
     ep_rewards, actions = [], []
+        
+    screen = self.env.reset()
+    screen = screen.reshape(-1, screen.shape[0])
 
-    screen, reward, action, terminal = self.env.new_random_game()
+    #screen, reward, action, terminal = self.env.new_random_game()
 
     for _ in range(self.history_length):
       self.history.add(screen)
@@ -52,8 +56,11 @@ class Agent(BaseModel):
 
       # 1. predict
       action = self.predict(self.history.get())
+      
+      #action = actionss[action]
       # 2. act
-      screen, reward, terminal = self.env.act(action, is_training=True)
+      screen, reward, terminal, info = self.env.step(action)
+      screen = screen.reshape(-1, screen.shape[0])
       # 3. observe
       self.observe(screen, reward, action, terminal)
 
@@ -219,7 +226,7 @@ class Agent(BaseModel):
           tf.reduce_mean(self.advantage, reduction_indices=1, keep_dims=True))
       else:
         self.l4, self.w['l4_w'], self.w['l4_b'] = linear(self.l3_flat, 512, activation_fn=activation_fn, name='l4')
-        self.q, self.w['q_w'], self.w['q_b'] = linear(self.l4, self.env.action_size, name='q')
+        self.q, self.w['q_w'], self.w['q_b'] = linear(self.l4, 7, name='q')
 
       self.q_action = tf.argmax(self.q, dimension=1)
 
